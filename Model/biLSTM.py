@@ -27,22 +27,23 @@ class Model(nn.Module):
         self.word_num = args.word_num
         self.dropout = args.dropout
         self.word_alpha = args.word_alpha
-        self.topic_alpha = args.topic_alpha
+        # self.topic_alpha = args.topic_alpha
 
 
-        self.embeddingTopic = nn.Embedding(self.topic_word_num, self.embed_size)
-        self.embeddingText = nn.Embedding(self.word_num, self.embed_size)
+        # self.embeddingTopic = nn.Embedding(self.topic_word_num, self.embed_size)
+        self.embedding = nn.Embedding(self.word_num, self.embed_size)
         if args.using_pred_emb:
             load_emb_text = Embedding.load_predtrained_emb_zero(self.save_pred_emd_path, self.word_alpha.string2id, padding=True)
-            load_emb_topic = Embedding.load_predtrained_emb_zero(self.save_pred_emd_path, self.topic_alpha.string2id, padding=False)
+            # load_emb_topic = Embedding.load_predtrained_emb_zero(self.save_pred_emd_path, self.topic_alpha.string2id, padding=False)
             # self.embeddingTopic = ConstEmbedding(load_emb_topic)
             # self.embeddingText = ConstEmbedding(load_emb_text)
             # self.embeddingTopic = nn.Embedding(args.topicWordNum, self.EmbedSize, sparse=True)
             # self.embeddingText = nn.Embedding(args.wordNum, self.EmbedSize, sparse=True)
-            self.embeddingTopic = nn.Embedding(self.topic_word_num, self.embed_size)
-            self.embeddingText = nn.Embedding(self.word_num, self.embed_size)
-            self.embeddingTopic.weight.data.copy_(load_emb_topic)
-            self.embeddingText.weight.data.copy_(load_emb_text)
+            # self.embeddingTopic = nn.Embedding(self.topic_word_num, self.embed_size)
+            print('load_emb_text.size(1):', load_emb_text.size(1))
+            self.embedding = nn.Embedding(self.word_num, self.embed_size)
+            # self.embeddingTopic.weight.data.copy_(load_emb_topic)
+            self.embedding.weight.data.copy_(load_emb_text)
         self.biLSTM = nn.LSTM(
             self.embed_size,
             self.biLSTM_hidden_size,
@@ -51,16 +52,16 @@ class Model(nn.Module):
             batch_first=True,
             bidirectional=True
         )
+        self.dropout_layer = nn.Dropout(args.dropout)
         self.linear1 = nn.Linear(self.biLSTM_hidden_size * 4, self.biLSTM_hidden_size // 2)
         self.linear2 = nn.Linear(self.biLSTM_hidden_size // 2, self.label_size)
 
     def forward(self, topic, text):
-        topic = self.embeddingText(topic)
-        text = self.embeddingText(text)
+        topic = self.dropout_layer(self.embedding(topic))
+        text = self.dropout_layer(self.embedding(text))
 
         topic, _ = self.biLSTM(topic)   #[1, 1, 200]
         text,  _ = self.biLSTM(text)    #[1, 17, 200]
-
 
         topic = torch.transpose(topic, 1, 2)
         text = torch.transpose(text, 1, 2)

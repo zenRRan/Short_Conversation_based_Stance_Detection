@@ -16,41 +16,37 @@ from langconv import *
 class reader:
 
     def __init__(self, filename, needFresh=True, language='chn'):
-        self.text = []
+        self.post = []
+        self.response = []
         self.label = []
-        self.labelType = []
         self.fileText = []
         self.maxLen = 0
         print("Reading " + filename)
         file = open(filename, "r", encoding='utf-8')
-        self.fileText = file.readlines()[:100]
+        self.fileText = file.readlines()
         file.close()
+
         if needFresh:
-            if language == 'chn':
-                fresh = refresh_chn_data(self.fileText)
-                self.fileText = fresh.getText()
+            fresh = refresh_chn_data(self.fileText)
+            fresh = refresh_eng_data(fresh.getText())
+            self.fileText = fresh.getText()
+
+        flag = True
+        for line in self.fileText:
+            line = line.strip().split()
+            if len(line) == 0:
+                continue
+            if flag:
+                self.post.append(line)
+                flag = False
             else:
-                fresh = refresh_eng_data(self.fileText)
-                self.fileText = fresh.getText()
-            # for i in range(len(self.fileText)):
-            #     # print(i, " raw ", self.fileText[i])
-            #     self.fileText[i] = self.freshData(self.fileText[i])
-            #     # print(i, " new ", self.fileText[i])
-
-        for i in range(len(self.fileText)):
-            line = self.fileText[i]
-            # print("line = ", line)
-            lineList = line.strip().split(" ")
-            self.fileText[i] = lineList
-            self.text.append(lineList[:-2])
-            self.maxLen = max(self.maxLen, len(lineList[:-2]))
-            self.label.append(lineList[-1])
-            if lineList[-1] not in self.labelType:
-                self.labelType.append(lineList[-1])
-
-
+                self.label.append(line[0])
+                self.response.append(line[2:])
+                flag = True
+        if len(self.post) != len(self.response):
+            print('len(self.post) != len(self.response) please check !')
     def getData(self):
-        return self.text, self.label, self.labelType
+        return self.post, self.response, self.label
 
     def getWholeText(self):
         # random.shuffle(self.fileText)
@@ -70,7 +66,6 @@ class refresh_eng_data:
     def getText(self):
         return self.newlist
     def freshData(self, string):
-        string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)
         string = re.sub(r"\'s", " \'s", string)
         string = re.sub(r"\'ve", " \'ve", string)
         string = re.sub(r"n\'t", " n\'t", string)
@@ -86,7 +81,7 @@ class refresh_eng_data:
         return string.strip().lower()
 
 
-
+# string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)
 """
  全角数字转半角
  全角英文字母转半角
@@ -98,7 +93,7 @@ class refresh_chn_data:
         rstring = ""
         for uchar in istring:
             inside_code = ord(uchar)
-            if inside_code == 0x3000:
+            if inside_code ==  0x3000:
                 inside_code = 0x0020
             else:
                 inside_code -= 0xfee0

@@ -22,13 +22,15 @@ from Common import unk_key
 from Common import padding_key
 from Common import English_topics
 from Common import Chinese_topics
-
+import time
+import os
 import matplotlib.pyplot as plt
-
+import collections
 random.seed(23)
 torch.manual_seed(23)
+torch.cuda.set_device(0)
 
-import collections
+
 
 class Labeler:
 
@@ -36,7 +38,7 @@ class Labeler:
         self.HyperParams = HyperParams()
         self.word_stat_dic = collections.OrderedDict()
         self.label_stat_dic = collections.OrderedDict()
-        self.topic_stat_dic = collections.OrderedDict()
+        # self.topic_stat_dic = collections.OrderedDict()
 
         if self.HyperParams.using_English_data:
             self.topics = English_topics
@@ -47,27 +49,20 @@ class Labeler:
         self.unkID = 0
         self.i = 0
 
-    def createAlphabet(self, text):
+    def createAlphabet(self, text, label):
         print("Creating Alphabet......")
         for line in text:
-            for word in line[:-2]:
+            for word in line:
                 if word not in self.word_stat_dic:
                     self.word_stat_dic[word] = 1
                 else:
                     self.word_stat_dic[word] += 1
 
-            if line[-1] not in self.label_stat_dic:
-                self.label_stat_dic[line[-1]] = 1
+        for word in label:
+            if word not in self.label_stat_dic:
+                self.label_stat_dic[word] = 1
             else:
-                self.label_stat_dic[line[-1]] += 1
-
-        for line in self.topics:
-            line = line.strip().split()
-            for word in line:
-                if word not in self.topic_stat_dic:
-                    self.topic_stat_dic[word] = 1
-                else:
-                    self.topic_stat_dic[word] += 1
+                self.label_stat_dic[word] += 1
 
         self.HyperParams.word_alpha.from_string(unk_key)
         self.HyperParams.word_alpha.from_string(padding_key)
@@ -77,14 +72,14 @@ class Labeler:
 
         self.HyperParams.word_alpha.initial(self.word_stat_dic, self.HyperParams.word_cut_off)
         self.HyperParams.label_alpha.initial(self.label_stat_dic)
-        self.HyperParams.topic_alpha.initial(self.topic_stat_dic)
+        # self.HyperParams.topic_alpha.initial(self.topic_stat_dic)
 
         self.padID = self.HyperParams.word_alpha.from_string(padding_key)
         self.unkID = self.HyperParams.word_alpha.from_string(unk_key)
 
         self.HyperParams.word_num = self.HyperParams.word_alpha.m_size
         self.HyperParams.label_size = self.HyperParams.label_alpha.m_size
-        self.HyperParams.topic_word_num = self.HyperParams.topic_alpha.m_size
+        # self.HyperParams.topic_word_num = self.HyperParams.topic_alpha.m_size
         # print(self.HyperParams.label_alpha.id2string)
         # print(self.label_stat_dic)
         print("Created over")
@@ -190,6 +185,11 @@ class Labeler:
             new_text.append(line[:self.HyperParams.set_sent_len])
         return new_text
 
+    def mergePostResponseLabel(self,post, response, label):
+        post_response_label = []
+        for elem in zip(post, response, label):
+            post_response_label.append(elem)
+        return post_response_label
 
     def train(self, train_file, dev_file=None, test_file=None):
 
@@ -198,7 +198,10 @@ class Labeler:
 
         sents_train = reader_train.getWholeText()
         sents_test = reader_test.getWholeText()
-
+        train_posts, train_responses, train_labels = reader_train.getData()
+        test_posts, test_responses, test_labels = reader_test.getData()
+        train_post_response_label = self.mergePostResponseLabel(train_posts, train_responses, train_labels)
+        test_post_response_label = self.mergePostResponseLabel(test_posts, test_responses, test_labels)
         # sentsTrain = self.cutSentFromText(sentsTrain)
         # sentsTest = self.cutSentFromText(sentsTest)
 
@@ -212,11 +215,16 @@ class Labeler:
             self.HyperParams.dev_den = len(sents_dev)
 
         if self.HyperParams.using_English_data:
-            self.createAlphabet(sents_train+sents_dev)
+            self.createAlphabet(train_posts + train_responses)
         else:
-            self.createAlphabet(sents_train)
+            self.createAlphabet(train_posts + train_responses, train_labels)
         self.HyperParams.topic_size = len(self.topics)
 
+        if self.HyperParams.if_write_dic2file:
+            print('writing dic to path:', self.HyperParams.word_dic_path)
+            self.HyperParams.word_alpha.write(self.HyperParams.word_dic_path)
+            self.HyperParams.label_alpha.write(self.HyperParams.label_dic_path)
+            print('done')
         args = self.HyperParams.args()
 
         print(args)
@@ -236,7 +244,10 @@ class Labeler:
             model = CNN.Model(self.HyperParams)
         if model == None:
             print("please select a model!")
-            return
+            raise RuntimeError
+        print('use_cuda:', self.HyperParams.use_cuda)
+        if self.HyperParams.use_cuda:
+            model = model.cuda()
 
         # print(model)
         # param = [i for i in model.parameters() if i.requires_grad]
@@ -258,16 +269,14 @@ class Labeler:
             print("please select a model!")
             return
 
-
-
-        def accuracy(model, sents):
+        def accuracy(model, posts, responses, labels):
             pred_right_num_idx = 0
             pred_num_idx = 1
             gold_num_idx = 2
 
             evalList = [[0, 0, 0] for _ in range(self.HyperParams.label_size)]
 
-            topic, text, label = self.processingRawStanceData(sents)
+            topic, text, label = posts, responses, labels
             topic = self.seq2id(topic)
             text = self.seq2id(text)
             label = self.label2id(label)
@@ -275,6 +284,10 @@ class Labeler:
             topic = Variable(torch.LongTensor(topic))
             text = Variable(torch.LongTensor(text))
             label = Variable(torch.LongTensor(label))
+            if self.HyperParams.use_cuda:
+                topic = topic.cuda()
+                text = text.cuda()
+                label = label.cuda()
 
             Y = model(topic, text)
             C = (torch.max(Y, 1)[1].view(label.size()).data == label.data).sum()
@@ -295,7 +308,7 @@ class Labeler:
                                 gold_num=evalList[i][gold_num_idx]).P_R_F1
                            for i in range(len(evalList))]
 
-            return float(C)/len(sents)*100, C, len(sents), P_R_F1_list
+            return float(C)/len(posts)*100, C, len(posts), P_R_F1_list
         def getTextBatchList(text, batch):
             textBatchlist = []
             textBatchNum = len(text) // batch
@@ -312,11 +325,23 @@ class Labeler:
             textBatchlist.append(text[end:len(text)])
             return textBatchlist
 
+        def batch2PostResponseLabel(batch):
+            posts = []
+            responses = []
+            labels = []
+            for elem in batch:
+                posts.append(elem[0])
+                responses.append(elem[1])
+                labels.append(elem[2])
+            return posts, responses, labels
+
         file = open(self.HyperParams.write_file_name, 'a+')
         file.write(args)
         file.close()
 
-        sents_train = sents_train
+        # sents_train = sents_train
+        train_post_response_label = train_post_response_label
+
         if self.HyperParams.using_English_data:
             sents_dev = sents_dev
         sents_test = sents_test
@@ -326,20 +351,23 @@ class Labeler:
         best_acc = 0
 
         loss_list = []
+        start_time = time.time()
         for step in range(Steps):
             file = open(self.HyperParams.write_file_name, 'a+')
             total_loss = torch.Tensor([0])
+            if self.HyperParams.use_cuda:
+                total_loss = total_loss.cuda()
             cnt = 0
             train_correct = 0
             random.shuffle(sents_train)
-            text_batch_list = getTextBatchList(sents_train, batch_size)
+            text_batch_list = getTextBatchList(train_post_response_label, batch_size)
 
             for batch in text_batch_list:
                 model.train()
                 Optimizer.zero_grad()
                 # SparseOprimizer.zero_grad()
 
-                topic, text, label = self.processingRawStanceData(batch)
+                topic, text, label = batch2PostResponseLabel(batch)
                 topic = self.seq2id(topic)
                 text = self.seq2id(text)
                 label = self.label2id(label)
@@ -347,8 +375,12 @@ class Labeler:
                 topic = Variable(torch.LongTensor(topic))
                 text = Variable(torch.LongTensor(text))
                 label = Variable(torch.LongTensor(label))
-
+                if self.HyperParams.use_cuda:
+                    topic = topic.cuda()
+                    text = text.cuda()
+                    label = label.cuda()
                 Y = model(topic, text)
+                # Y = Y.cuda()
                 # print(Y.size())
                 # print(label.size())
                 Loss = F.cross_entropy(Y, label)
@@ -358,24 +390,25 @@ class Labeler:
                 Optimizer.step()
 
                 cnt += 1
-                if cnt % 500 == 0:
-                    print(cnt)
+                # if cnt % 500 == 0:
+                #     print(cnt)
                 total_loss += Loss.data
                 train_correct += (torch.max(Y, 1)[1].view(label.size()).data == label.data).sum()
             if self.HyperParams.lr_decay:
-                adjust_learning_rate(Optimizer, self.HyperParams.lr / (1 + (step*3.01 + 1) * self.HyperParams.decay))
-            total_loss /= len(sents_train)
+                adjust_learning_rate(Optimizer, self.HyperParams.lr / (1 + step * self.HyperParams.decay))
+            total_loss /= len(train_posts)
+            total_loss = total_loss.cpu()
             loss_list.append(total_loss.numpy()[0])
-            train_acc = float(train_correct)/len(sents_train) * 100
-
-            FAVOR_index = self.HyperParams.label_alpha.string2id["favor"]
-            AGAINST_index = self.HyperParams.label_alpha.string2id["against"]
+            train_acc = float(train_correct)/len(train_posts) * 100
+#(step*3.01 + 1
+            p_index = self.HyperParams.label_alpha.string2id["p"]
+            n_index = self.HyperParams.label_alpha.string2id["n"]
             if self.HyperParams.using_English_data:
-                dev_acc, dev_correct, dev_num, P_R_F1_dev_list =  accuracy(model, sents_dev)
-            test_acc, test_correct, test_num, P_R_F1_test_list = accuracy(model, sents_test)
+                dev_acc, dev_correct, dev_num, P_R_F1_dev_list =  accuracy(model, test_posts, test_responses, test_labels)
+            test_acc, test_correct, test_num, P_R_F1_test_list = accuracy(model, test_posts, test_responses, test_labels)
             if self.HyperParams.using_English_data:
-                dev_mean_F1 = (P_R_F1_dev_list[FAVOR_index][2] + P_R_F1_dev_list[AGAINST_index][2]) / 2
-            test_mean_F1 = (P_R_F1_test_list[FAVOR_index][2] + P_R_F1_test_list[AGAINST_index][2]) / 2
+                dev_mean_F1 = (P_R_F1_dev_list[p_index][2] + P_R_F1_dev_list[n_index][2]) / 2
+            test_mean_F1 = (P_R_F1_test_list[p_index][2] + P_R_F1_test_list[n_index][2]) / 2
 
 
             if self.HyperParams.using_Chinese_data:
@@ -383,10 +416,10 @@ class Labeler:
                                                                                                                            total_loss.numpy()[0],
                                                                                                                            train_acc,
                                                                                                                            train_correct,
-                                                                                                                           len(sents_train),
+                                                                                                                           len(train_posts),
                                                                                                                            test_acc,
                                                                                                                            test_correct,
-                                                                                                                           int(test_num),
+                                                                                                                           len(test_posts),
                                                                                                                            test_mean_F1)
             else:
                 output = "Step: {} - loss: {:.6f}  Train  acc: {:.4f}%{}/{}     Dev  acc: {:.4f}%{}/{}     Test  acc: {:.4f}%{}/{}  F1={:.4f}".format(
@@ -410,9 +443,14 @@ class Labeler:
                 fmodel = 'Module/%d.params' % (step)
                 torch.save(model, fmodel)
 
-            print(output)
+            print(output, end='#')
             file.write(output+"\n")
             file.close()
+            end_time = time.time()
+            mins, secs = sec2min(end_time - start_time)
+            need_secs = float(end_time - start_time) / ((float(step)+1) / Steps)
+            need_mins, need_secs = sec2min(need_secs)
+            print("use {:.0f}m{:.0f}s(-{:.0f}m{:.0f}s)".format(mins, secs, need_mins, need_secs))
 
         file = open(self.HyperParams.write_file_name, 'a+')
         output = 'Total: best F1 = ' + str(best_F1) + ' acc = ' + str(best_acc)
@@ -426,6 +464,10 @@ class Labeler:
 # def printList(list):
 #     for line in list:
 #         print(" ".join(line))
+def sec2min(secends):
+    mins = secends // 60
+    sec = secends % 60
+    return mins, sec
 def adjust_learning_rate(optimizer, lr):
     """
     shrink learning rate for pytorch

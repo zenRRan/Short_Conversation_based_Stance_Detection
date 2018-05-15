@@ -46,23 +46,3 @@ class Eval:
 #             evalList[i][pred_num_idx] += 1
 # print(Eval(evalList[0][0], evalList[0][1], evalList[0][2]).P_R_F1)
 # print(Eval(evalList[1][0], evalList[1][1], evalList[1][2]).P_R_F1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

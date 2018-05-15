@@ -1,0 +1,48 @@
+Reading ./Data/Chinese/short_conversation_corpus/stanceResponse.train
+Reading ./Data/Chinese/short_conversation_corpus/stanceResponse.test
+Creating Alphabet......
+OrderedDict([('n', 1873), ('p', 3741), ('m', 1707)])
+Created over
+----------args----------
+embed_size=128
+Steps=50
+lr=0.001
+dropout=0.5
+batch_size=16
+word_cut_off=0
+biGRU_hidden_size=128
+biGRU_hidden_num=1
+Optimizer=True
+lr_decay=True
+clip_grad=False
+using_pred_emb=False
+language=Chinese
+
+
+using biGRU...
+using Adam...
+best F1=0.5376
+Step: 0 - loss: 0.058643  Train  acc: 55.2247%4043/7321     Test  acc: 57.0335%1192/2090  F1=0.5376
+best F1=0.6082
+Step: 1 - loss: 0.052365  Train  acc: 61.9587%4536/7321     Test  acc: 60.3828%1262/2090  F1=0.6082
+Step: 2 - loss: 0.045455  Train  acc: 67.9689%4976/7321     Test  acc: 60.2392%1259/2090  F1=0.6065
+Step: 3 - loss: 0.036149  Train  acc: 75.3312%5515/7321     Test  acc: 58.2775%1218/2090  F1=0.5798
+Step: 4 - loss: 0.024952  Train  acc: 83.4995%6113/7321     Test  acc: 58.0861%1214/2090  F1=0.5733
+Step: 5 - loss: 0.014907  Train  acc: 90.8482%6651/7321     Test  acc: 56.5072%1181/2090  F1=0.5539
+Step: 6 - loss: 0.008464  Train  acc: 94.8914%6947/7321     Test  acc: 57.3684%1199/2090  F1=0.5681
+Step: 7 - loss: 0.005054  Train  acc: 97.1998%7116/7321     Test  acc: 56.9856%1191/2090  F1=0.5761
+Step: 8 - loss: 0.003251  Train  acc: 98.0604%7179/7321     Test  acc: 56.3636%1178/2090  F1=0.5739
+Step: 9 - loss: 0.002633  Train  acc: 98.4975%7211/7321     Test  acc: 57.0335%1192/2090  F1=0.5700
+Step: 10 - loss: 0.002343  Train  acc: 98.5931%7218/7321     Test  acc: 56.9856%1191/2090  F1=0.5773
+Step: 11 - loss: 0.002085  Train  acc: 98.7980%7233/7321     Test  acc: 56.6507%1184/2090  F1=0.5578
+Step: 12 - loss: 0.001579  Train  acc: 99.1804%7261/7321     Test  acc: 56.2201%1175/2090  F1=0.5690
+Step: 13 - loss: 0.001266  Train  acc: 99.3170%7271/7321     Test  acc: 56.0287%1171/2090  F1=0.5726
+Step: 14 - loss: 0.001444  Train  acc: 99.1121%7256/7321     Test  acc: 57.4641%1201/2090  F1=0.5784
+Step: 15 - loss: 0.001335  Train  acc: 99.3580%7274/7321     Test  acc: 56.4115%1179/2090  F1=0.5714
+Step: 16 - loss: 0.001357  Train  acc: 99.3170%7271/7321     Test  acc: 57.3684%1199/2090  F1=0.5805
+Step: 17 - loss: 0.001373  Train  acc: 99.2351%7265/7321     Test  acc: 56.5072%1181/2090  F1=0.5685
+Step: 18 - loss: 0.000506  Train  acc: 99.7541%7303/7321     Test  acc: 56.1244%1173/2090  F1=0.5651
+Step: 19 - loss: 0.000341  Train  acc: 99.8361%7309/7321     Test  acc: 55.1196%1152/2090  F1=0.5458
+Step: 20 - loss: 0.000640  Train  acc: 99.5902%7291/7321     Test  acc: 56.4115%1179/2090  F1=0.5670
+Step: 21 - loss: 0.001676  Train  acc: 99.2078%7263/7321     Test  acc: 56.3636%1178/2090  F1=0.5514
+Step: 22 - loss: 0.001478  Train  acc: 99.3034%7270/7321     Test  acc: 56.0766%1172/2090  F1=0.5610

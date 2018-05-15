@@ -30,8 +30,8 @@ class Model(nn.Module):
         self.topic_alpha = args.topic_alpha
 
 
-        self.embeddingTopic = nn.Embedding(self.topic_word_num, self.embed_size)
-        self.embeddingText = nn.Embedding(self.word_num, self.embed_size)
+        # self.embedding = nn.Embedding(self.word_num, self.embed_size)
+        self.embedding = nn.Embedding(self.word_num, self.embed_size)
         if args.using_pred_emb:
             load_emb_text = Embedding.load_predtrained_emb_zero(self.save_pred_emd_path, self.word_alpha.string2id, padding=True)
             load_emb_topic = Embedding.load_predtrained_emb_zero(self.save_pred_emd_path, self.topic_alpha.string2id, padding=False)
@@ -39,9 +39,7 @@ class Model(nn.Module):
             # self.embeddingText = ConstEmbedding(load_emb_text)
             # self.embeddingTopic = nn.Embedding(args.topicWordNum, self.EmbedSize, sparse=True)
             # self.embeddingText = nn.Embedding(args.wordNum, self.EmbedSize, sparse=True)
-            self.embeddingTopic = nn.Embedding(self.topic_word_num, self.embed_size)
-            self.embeddingText = nn.Embedding(self.word_num, self.embed_size)
-            self.embeddingTopic.weight.data.copy_(load_emb_topic)
+            self.embedding = nn.Embedding(self.word_num, self.embed_size)
             self.embeddingText.weight.data.copy_(load_emb_text)
         self.biGRU = nn.GRU(
             self.embed_size,
@@ -55,8 +53,8 @@ class Model(nn.Module):
         self.linear2 = nn.Linear(self.biGRU_hidden_size // 2, self.label_size)
 
     def forward(self, topic, text):
-        topic = self.embeddingText(topic)
-        text = self.embeddingText(text)
+        topic = self.embedding(topic)
+        text = self.embedding(text)
 
         topic, _ = self.biGRU(topic)   #[1, 1, 200]
         text,  _ = self.biGRU(text)    #[1, 17, 200]

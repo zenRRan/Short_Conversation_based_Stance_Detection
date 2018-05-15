@@ -123,6 +123,7 @@ def load_predtrained_emb_zero(path, words_dic, padding=False):
                 embedding[index] = vector
                 in_word_list.append(index)
     print("done")
+    print(embedding)
     return torch.from_numpy(embedding).float()
 
 
@@ -174,6 +175,7 @@ def load_predtrained_emb_avg(path, words_dic, padding=False, save=''):
     if save != '':
         with open(save, 'a') as f:
             for line in lines:
+                line = line.strip()
                 f.write(line+'\n')
             print("save successful! path=", save)
     return torch.from_numpy(embedding).float()

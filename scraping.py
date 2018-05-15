@@ -6,9 +6,10 @@
 # @File    : scraping.py
 # @Software: PyCharm Community Edition
 
-import numpy as np
-import urllib
+import re
+import random
+import tkinter as tk
 
-dic = {}
-dic['a'] = 1
-print(dic['a'])
+window = tk.Tk()
+
+window.mainloop()

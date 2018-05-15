@@ -14,13 +14,13 @@ class HyperParams:
         self.max_sent_len = 0
         self.set_sent_len = 1
         self.label_size = 0
-        self.embed_size = 64
-        self.Steps = 5
+        self.embed_size = 128
+        self.Steps = 50
         self.lr = 0.001
         self.dropout = 0.5
         self.word_num = 0
         self.topic_size = 0
-        self.batch_size = 13
+        self.batch_size = 16
         self.word_cut_off = 0
         self.using_pred_emb = True
         self.using_Chinese_data =True
@@ -28,12 +28,14 @@ class HyperParams:
         self.topic_word_num = 0
         self.pred_emd_dim = 64
         self.decay = 1e-8
-        self.lr_decay = True
+        self.lr_decay = 1e-8
+        self.if_lr_decay = True
         self.clip_grad = False
+        self.use_cuda = True
 
         #biLSTM
         self.biLSTM = True
-        self.biLSTM_hidden_size = 128
+        self.biLSTM_hidden_size = 64
         self.biLSTM_hidden_num = 1
 
         #biGRU
@@ -55,12 +57,12 @@ class HyperParams:
             lg = '英文'
         else:
             lg = '中文'
-        self.main_address = 'D:/Corpus/SD/'
-        if lg == '英文':
-            self.dev_file = self.main_address + lg + "/dev.sd"
+        self.main_address = './Data/Chinese/short_conversation_corpus'
+        # if lg == '英文':
+        #     self.dev_file = self.main_address + lg + "/dev.sd"
 
-        self.train_file = self.main_address + lg + "/train.sd"
-        self.test_file = self.main_address + lg + "/test.sd"
+        self.train_file = self.main_address + "/stanceResponse.train"
+        self.test_file = self.main_address + "/stanceResponse.test"
 
         self.write_file_name = '../eng_data.txt'
         self.write_file_name = '../test_data.txt'
@@ -71,6 +73,10 @@ class HyperParams:
         self.save_pred_emd_path = './Data/Chinese/pred_emd.txt'
         # self.save_pred_emd_path = self.eng_pred_embedding_path
         self.save_model_path = './Module/'
+
+        self.if_write_dic2file = True
+        self.word_dic_path = './word_dic.txt'
+        self.label_dic_path = './label_dic.txt'
         self.train_len = 0
         self.dev_len = 0
         self.test_len = 0
@@ -156,14 +162,17 @@ class Alphabet:
     def write(self, path):
         fopen = open(path, encoding="utf-8", mode='w')
         for key in self.string2id:
-            fopen.write(key+"   "+str(self.string2id[key])+'\n')
+            fopen.write(key+" "+str(self.string2id[key])+'\n')
         fopen.close()
 
     def read(self, path):
         fopen = open(path, encoding="utf-8", mode='r')
         for line in fopen:
-            info = line.split(" ")
-            self.string2id[info[0]] = info[1]
+            info = line.strip().split(" ")
+            if not info[1].isdigit():
+                print(line[1], ' not !digit!')
+                raise RuntimeError
+            self.string2id[info[0]] = int(info[1])
             self.id2string.append(info[0])
         self.m_b_fixed = True
         self.m_size = len(self.string2id)
